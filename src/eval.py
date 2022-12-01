@@ -48,7 +48,7 @@ rng = np.random.default_rng(SEED)
 random.seed(SEED)
 torch.manual_seed(SEED)
 
-DEVICE = 'cuda'
+DEVICE = 'cuda:2'
 
 
 
@@ -130,7 +130,7 @@ def crop_img(img: np.ndarray, h: int, w: int) -> np.ndarray:
     else:
         image = img[:,:,top_margin:top_margin + h, left_margin:left_margin + w]
     return image
-def run_visualization(model: Module, loader: DataLoader, loss_fn: Loss, fout: Optional[str] = None, downscale: int = 2) -> None:
+def run_visualization(model_d, model: Module, loader: DataLoader, loss_fn: Loss, fout: Optional[str] = None, downscale: int = 2) -> None:
     h, w = 375//downscale, 1242//downscale
 
     save_path = '/workspace/data2/result_calibration_img/deep_viz'
@@ -150,8 +150,8 @@ def run_visualization(model: Module, loader: DataLoader, loss_fn: Loss, fout: Op
     with torch.no_grad():
         i = 0
         for i, sample in enumerate(pbar):
-            cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo, T, P = sample[0].cuda(), sample[1].cuda(), sample[2], sample[3].cuda(), \
-                                                              sample[4].cuda(), sample[5].cuda(), sample[6].cuda(), sample[7].cuda()
+            cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo, T, P = sample[0].to(DEVICE), sample[1].to(DEVICE), sample[2], sample[3].to(DEVICE), \
+                                                              sample[4].to(DEVICE), sample[5].to(DEVICE), sample[6].to(DEVICE), sample[7].to(DEVICE)
 
             # SHAPE CHANGE
             # print(f'SHAPE PRE  {cam2_d.shape}')
@@ -291,8 +291,13 @@ def run_iterative(model_d, models: List[Module], loader: DataLoader, loss_fn: Lo
         for i, sample in enumerate(pbar):
 
             crop_start = time.time()        #-----------------------------------
-            cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo, T, P = sample[0].cuda(), sample[1].cuda(), sample[2], sample[3].cuda(), \
-                                                              sample[4].cuda(), sample[5].cuda(), sample[6].cuda(), sample[7].cuda()
+            cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo, T, P = sample[0].to(DEVICE), sample[1].to(DEVICE), sample[2], sample[3].to(DEVICE), \
+                                                              sample[4].to(DEVICE), sample[5].to(DEVICE), sample[6].to(DEVICE), sample[7].to(DEVICE)
+
+            print(f"TYPE----------------- {type(velo_d)}")
+            print(f"TYPE----------------- {type(velo_d)}")
+            print(f"TYPE----------------- {type(velo_d)}")
+            print(f" EVAL Data {velo_d.shape}  {torch.mean(velo_d)} {torch.max(velo_d)} {torch.min(velo_d)}")
 
             cam2_d = crop_img(cam2_d, 352, 1216)
 
@@ -355,158 +360,50 @@ def run_iterative(model_d, models: List[Module], loader: DataLoader, loss_fn: Lo
 
                 
 
-                velo_d = torch.from_numpy(velo_d_np).unsqueeze(0).unsqueeze(0).cuda()
+                velo_d = torch.from_numpy(velo_d_np).unsqueeze(0).unsqueeze(0).to(DEVICE)
                 ###################
                 velo_d_raw = velo_d
+                break
                 ###################
                 M_VELOD = 14.0833
                 S_VELOD = 8.7353
                 velo_d = (velo_d - M_VELOD) / S_VELOD
-
-                # print(velo_d.min())
-                # print(velo_d.max())
-
-                # print(velo_d_raw.min())
-                # print(velo_d_raw.max())
-                # sys.exit()
 
                 what_end = time.time()
 
 
                 idx +=1
 
-                # print("camera")
-                # print(cam2_d)
 
-                # print("norm_lidar")                
-                # print(velo_d)       
-                # print(velo_d.shape)     
-                # print(velo_d.min())
-                # print(velo_d.max())
-
-                # print(velo_d_raw.shape)     
-                # print(velo_d_raw.min())
-                # print(velo_d_raw.max())
-
-                # print(cam2.shape)     
-                # print(cam2.min())
-                # print(cam2.max())
-                # sys.exit()
-
-
-            ###############
-            # block_average_meter = AverageMeter()
-            # block_average_meter.reset(False)
-            # average_meter = AverageMeter()
-            # meters = [block_average_meter, average_meter]
-
-
-            # im = Image.fromarray(velo_d_np)
-            # np.save("velo_d_np.png",velo_d_np)            
-            # sys.exit()
-
-            # print(velo_d_np.max())
-            # print(velo_d_np.min())
-            # print(velo_d_np.std())
-            # print(velo_d_np.mean())
-            # sys.exit()
 
             model_d.eval()
             lr = 0
-            
-            # print(cam2)
             
             cam2_tensor = np.transpose(cam2, (2, 0, 1)) 
             cam2_tensor = torch.Tensor(cam2_tensor)
             cam2_tensor = cam2_tensor.unsqueeze(0)
             cam2_tensor = crop_img(cam2_tensor, 352, 1216)
 
-            # print(cam2_tensor.shape)
-            # sys.exit()
-            
-            # cam2_tensor = cam2.reshape((1,3,375,1242))
-            # cam2_tensor = crop_img(cam2_tensor, 352, 1216)
-            # cam2_tensor = torch.Tensor(cam2_tensor)
-            
-            # print(cam2_tensor.shape)
-            # cam2_tensor = cam2_tensor.reshape((352,1216,3))            
-            # print(cam2_tensor.shape)
-
-            # cam2_tensor = torch.Tensor(cam2)
-            # print("check")
-            # print(cam2_tensor)
-            # sys.exit()
-            # cam2_tensor = cam2.reshape((3,375,1242))
-            # cam2_tensor = torch.Tensor(cam2_tensor)
-
-                    
-            # numpy 출력                        
-            # str_i = str(i)
-            # path_i = str_i.zfill(10) + '_cam2.png'
-            # path = os.path.join(args.data_folder_save, path_i)
-            # img = Image.fromarray(cam2_tensor)
-            # img.save(path)
-            # sys.exit()
-            
-            # print(velo_d.shape)     
-            # print(velo_d.min())
-            # print(velo_d.max())
-
-            # print(velo_d_raw.shape)     
-            # print(velo_d_raw.min())
-            # print(velo_d_raw.max())
-            # sys.exit()
-
             batch_data = {"rgb": cam2_tensor, "d": velo_d_raw,\
                       'position': args.position, 'K': args.K}
-        
-            # to_tensor = transforms.ToTensor()
-            # to_float_tensor = lambda x: to_tensor(x).float()
-            # items = {
-            #     key: to_float_tensor(val)
-            #     for key, val in batch_data.items() if val is not None
-            # }            
-
-
             batch_data = {
-                key: val.to(device)
+                key: val.to(DEVICE)
                 for key, val in batch_data.items() if val is not None
             }
-            # sys.exit()
-
-
-            print("batch_data")
-            print(batch_data)
-            # print("position")
-            # print(batch_data["position"])
-            # print(position.max())
-                # print(position.min())
-
-            print(batch_data["rgb"].shape)
-            print(batch_data["d"].shape)
-            print(batch_data["position"].shape)
-            print(batch_data["K"].shape)
-
-            print("======================")
-            print(batch_data['rgb'].min())
-            print(batch_data['rgb'].max())
-            print("======================")
-            print(batch_data['d'].min())
-            print(batch_data['d'].max())
-            print("======================")
-            print(batch_data['position'].min())
-            print(batch_data['position'].max())
-            print("======================")
-            print(batch_data['K'].min())
-            print(batch_data['K'].max())
-            # sys.exit()
 
             pred_d = model_d(batch_data)
-            
+            print(batch_data['K'])
+            print(f"Shape of pred {pred_d.shape}")
+            # print(f"Data {velo_d_raw.shape}  {torch.mean(velo_d_raw)} {torch.max(velo_d_raw)}")
+            print(f"Data {velo_d_raw.shape}  {torch.mean(velo_d_raw)} {torch.max(velo_d_raw)} {torch.min(velo_d_raw)}")
+            print(f"Data {velo_d_raw.shape}  {torch.mean(velo_d_raw)} {torch.max(velo_d_raw)} {torch.min(velo_d_raw)}")
+
             str_i = str(i)
             path_i = str_i.zfill(10) + '_output.png'
             path = os.path.join(args.data_folder_save, path_i)
-
+            rgb_path = os.path.join(args.data_folder_save, str(i).zfill(10) + '_output_rgb.png')
+            im = Image.fromarray(cam2)
+            im.save(rgb_path)
             # print("pred")
             # print(type(pred_d))            
             # pred_d = torch.tensor(pred_d)
@@ -514,6 +411,8 @@ def run_iterative(model_d, models: List[Module], loader: DataLoader, loss_fn: Lo
 
             cam2_d = pred_d 
             vis_utils.save_depth_as_uint16png_upload(pred_d, path)
+            print(f"Path {path}")
+
             # sys.exit()
             ###############
             T_recalib = phi.copy()
@@ -532,7 +431,7 @@ def run_iterative(model_d, models: List[Module], loader: DataLoader, loss_fn: Lo
             # timer stop
             running_time += (time.time() - t)
             # loss = loss_fn((pred_r, pred_t), torch.split(gt_err_norm, 3, dim=1), velo, T)
-            loss = loss_fn((torch.from_numpy(loss_r.reshape(1,3)).cuda(), torch.from_numpy(loss_t.reshape(1,3)).cuda()), torch.split(gt_err_norm, 3, dim=1), velo, T)
+            loss = loss_fn((torch.from_numpy(loss_r.reshape(1,3)).to(DEVICE), torch.from_numpy(loss_t.reshape(1,3)).to(DEVICE)), torch.split(gt_err_norm, 3, dim=1), velo, T)
 
             # collect statistics
             running_loss += loss.item()
@@ -548,10 +447,11 @@ def run_iterative(model_d, models: List[Module], loader: DataLoader, loss_fn: Lo
             rot_err[i] = np.abs(new_r-gt_splits[0])
             trans_err[i] = np.abs(new_t-gt_splits[1])
 
-            print(f"Prep  Time {crop_end-crop_start}")
-            print(f"Model Time {model_time}")
-            print(f"Proj  Time {proj_time}")
-            print(f"Proj2 Time {what_end - proj_end}")
+            continue
+            # print(f"Prep  Time {crop_end-crop_start}")
+            # print(f"Model Time {model_time}")
+            # print(f"Proj  Time {proj_time}")
+            # print(f"Proj2 Time {what_end - proj_end}")
             # print(f"Proj  Time {proj_end-save_end}")
             # print(f"PRED _FIRST {new_r}   {new_t}" )
             # print(f"GT   _FIRST {gt_splits[0]}   {gt_splits[1]}" )
@@ -797,7 +697,7 @@ if __name__ == '__main__':
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    print("=> using '{}' for computation.".format(device))
+    print("=> using '{}' for computation.".format(DEVICE))
 
     # define loss functions
     depth_criterion = criteria_d.MaskedMSELoss() if (
@@ -855,6 +755,88 @@ if __name__ == '__main__':
     test_ds = CalibDataset(path=args.dataset, mode='test', rotation_offset=args.rotation_offsest, translation_offset=args.translation_offsest)
     criteria = Loss(dataset=test_ds, alpha=args.loss_a, beta=args.loss_b, gamma=args.loss_c)
 
+    ###################
+    # checkpoint        
+    checkpoint = None
+    is_eval = False
+    if args.evaluate:                
+        args_new = args
+        if os.path.isfile(args.evaluate):
+            print("=> loading checkpoint '{}' ... ".format(args.evaluate),
+                end='')
+            checkpoint = torch.load(args.evaluate, map_location=DEVICE)                                    
+            #args = checkpoint['args']
+            args.start_epoch = checkpoint['epoch'] + 1
+            args.data_folder = args_new.data_folder
+            args.val = args_new.val
+            is_eval = True
+            print("Completed.")
+        else:
+            is_eval = True
+            print("No model found at '{}'".format(args.evaluate))
+    elif args.resume:  # optionally resume from a checkpoint        
+        args_new = args
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}' ... ".format(args.resume),
+                end='')
+            checkpoint = torch.load(args.resume, map_location=DEVICE)
+            args.start_epoch = checkpoint['epoch'] + 1
+            args.data_folder = args_new.data_folder
+            args.val = args_new.val
+            print("Completed. Resuming from epoch {}.".format(
+                checkpoint['epoch']))
+        else:
+            print("No checkpoint found at '{}'".format(args.resume))
+            # return
+    
+    #choose model
+    print("=> creating model and optimizer ... ", end='')
+    model_d = None
+    penet_accelerated = False
+    if (args.network_model == 'e'):
+        model_d = ENet(args).to(DEVICE)
+    elif (is_eval == False):
+        if (args.dilation_rate == 1):
+            model_d = PENet_C1_train(args).to(DEVICE)
+        elif (args.dilation_rate == 2):
+            model_d = PENet_C2_train(args).to(DEVICE)
+        elif (args.dilation_rate == 4):
+            model_d = PENet_C4(args).to(DEVICE)
+            penet_accelerated = True
+    else:
+        if (args.dilation_rate == 1):
+            model_d = PENet_C1(args).to(DEVICE)
+            penet_accelerated = True
+        elif (args.dilation_rate == 2):
+            model_d = PENet_C2(args).to(DEVICE)
+            penet_accelerated = True
+        elif (args.dilation_rate == 4):
+            model_d = PENet_C4(args).to(DEVICE)
+            penet_accelerated = True
+    if (penet_accelerated == True):
+        model_d.encoder3.requires_grad = False
+        model_d.encoder5.requires_grad = False
+        model_d.encoder7.requires_grad = False
+
+    model_d_named_params = None
+    model_d_bone_params = None
+    model_d_new_params = None
+    if checkpoint is not None:
+        #print(checkpoint.keys())
+        if (args.freeze_backbone == True):
+            model_d.backbone.load_state_dict(checkpoint['model'])
+        else:
+            model_d.load_state_dict(checkpoint['model'], strict=False)
+        #optimizer.load_state_dict(checkpoint['optimizer'])
+        print("=> checkpoint state loaded.")
+    
+    logger = helper.logger(args)
+    if checkpoint is not None:
+        logger.best_result = checkpoint['best_result']
+        del checkpoint
+    print("=> logger created.")
+    ###################
+
     # run
     if args.visualization:
 
@@ -888,9 +870,9 @@ if __name__ == '__main__':
             exit(0)
 
         # push model to gpu
-        model.cuda()
+        model.to(DEVICE)
         # run task
-        run_visualization(model, test_loader, criteria, args.out_path)
+        run_visualization(model_d, model, test_loader, criteria, args.out_path)
     elif args.iterative:
         # build data loader
         test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=4,
@@ -906,7 +888,7 @@ if __name__ == '__main__':
             ckpt = torch.load(fckpt)
 
             model.load_state_dict(ckpt['model'])
-            model.cuda()
+            model.to(DEVICE)
             models.append(model)
             offsets.append((args.rotation_offsests[i], args.translation_offsests[i]))
 
@@ -924,94 +906,7 @@ if __name__ == '__main__':
                   f'train loss: {train_loss:.04f}; best validation loss: {best_val:.04f};'
                   f'Offsets: {args.rotation_offsests[i]} degrees, {args.translation_offsests[i]} meters.')
 
-        ###################
-        # checkpoint        
-        checkpoint = None
-        is_eval = False
-        if args.evaluate:                
-            args_new = args
-            if os.path.isfile(args.evaluate):
-                print("=> loading checkpoint '{}' ... ".format(args.evaluate),
-                    end='')
-
-                checkpoint = torch.load(args.evaluate, map_location=device)                                    
-                #args = checkpoint['args']
-                args.start_epoch = checkpoint['epoch'] + 1
-                args.data_folder = args_new.data_folder
-                args.val = args_new.val
-                is_eval = True
-
-                print("Completed.")
-            else:
-                is_eval = True
-                print("No model found at '{}'".format(args.evaluate))
-        elif args.resume:  # optionally resume from a checkpoint        
-            args_new = args
-            if os.path.isfile(args.resume):
-                print("=> loading checkpoint '{}' ... ".format(args.resume),
-                    end='')
-                checkpoint = torch.load(args.resume, map_location=device)
-
-                args.start_epoch = checkpoint['epoch'] + 1
-                args.data_folder = args_new.data_folder
-                args.val = args_new.val
-                print("Completed. Resuming from epoch {}.".format(
-                    checkpoint['epoch']))
-            else:
-                print("No checkpoint found at '{}'".format(args.resume))
-                # return
         
-        #choose model
-        print("=> creating model and optimizer ... ", end='')
-        model_d = None
-        penet_accelerated = False
-        if (args.network_model == 'e'):
-            model_d = ENet(args).to(device)
-        elif (is_eval == False):
-            if (args.dilation_rate == 1):
-                model_d = PENet_C1_train(args).to(device)
-            elif (args.dilation_rate == 2):
-                model_d = PENet_C2_train(args).to(device)
-            elif (args.dilation_rate == 4):
-                model_d = PENet_C4(args).to(device)
-                penet_accelerated = True
-        else:
-            if (args.dilation_rate == 1):
-                model_d = PENet_C1(args).to(device)
-                penet_accelerated = True
-            elif (args.dilation_rate == 2):
-                model_d = PENet_C2(args).to(device)
-                penet_accelerated = True
-            elif (args.dilation_rate == 4):
-                model_d = PENet_C4(args).to(device)
-                penet_accelerated = True
-
-        if (penet_accelerated == True):
-            model_d.encoder3.requires_grad = False
-            model_d.encoder5.requires_grad = False
-            model_d.encoder7.requires_grad = False
-    
-        model_d_named_params = None
-        model_d_bone_params = None
-        model_d_new_params = None
-        optimizer = None
-
-
-        if checkpoint is not None:
-            #print(checkpoint.keys())
-            if (args.freeze_backbone == True):
-                model_d.backbone.load_state_dict(checkpoint['model'])
-            else:
-                model_d.load_state_dict(checkpoint['model'], strict=False)
-            #optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> checkpoint state loaded.")
-        
-        logger = helper.logger(args)
-        if checkpoint is not None:
-            logger.best_result = checkpoint['best_result']
-            del checkpoint
-        print("=> logger created.")
-        ###################
         # run task
         run_iterative(model_d, models, test_loader, criteria, offsets, args.out_path)
     

@@ -276,7 +276,7 @@ def preprocess_depth_data(dataset: KITTIDataset, method_for_cam_depth: Optional,
         # mkdir
         drive_path = dataset.pred_save_path.joinpath(f'{dataset.date}_drive_{drive}_sync')
         image_c_path = drive_path.joinpath('image_c')
-        image_l_path = drive_path.joinpath('image_l_S')
+        image_l_path = drive_path.joinpath('image_l_PS')
 
         # if image_c_path.exists() and image_l_path.exists():
         #     print(f'Drive {drive} seems already processed. Skip.')
@@ -291,7 +291,7 @@ def preprocess_depth_data(dataset: KITTIDataset, method_for_cam_depth: Optional,
 
         image_c_path.mkdir(exist_ok=True)
         image_l_path.mkdir(exist_ok=True)
-        f_gt_err = open(drive_path.joinpath('gt_S.txt'), 'w')
+        f_gt_err = open(drive_path.joinpath('gt_PS.txt'), 'w')
 
         # data loader and progress bar
         loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.n_workers, pin_memory=True, drop_last=False)
@@ -319,6 +319,7 @@ def preprocess_depth_data(dataset: KITTIDataset, method_for_cam_depth: Optional,
                 T_composed = T_err @ T
                 depth_l = lidar_projection(velo, T_composed, P, shape, crop=(dataset.crop_h, dataset.crop_w))
                 depth_l = (depth_l*256).astype(np.uint16)
+                print(f"Data {depth_l.shape}  {np.mean(depth_l)} {np.max(depth_l)}")
 
                 # get cam2 depth
                 if method_for_cam_depth is not None:

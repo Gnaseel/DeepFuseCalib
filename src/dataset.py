@@ -102,7 +102,7 @@ class TrainDataset(Dataset):
         self.loaders = {}
         for drive in self.drives:
             loader = pykitti2.raw(getattr(self, f'{self.mode}_root').as_posix(), self.date, drive)
-            gt_file = getattr(self, f'{self.mode}_root').joinpath(self.date).joinpath(f'{self.date}_drive_{drive}_sync').joinpath('gt_F.txt').as_posix()
+            gt_file = getattr(self, f'{self.mode}_root').joinpath(self.date).joinpath(f'{self.date}_drive_{drive}_sync').joinpath('gt_PS.txt').as_posix()
             with open(gt_file, 'r') as f:
                 gt = [l.strip().split(',') for l in f]
             
@@ -144,6 +144,7 @@ class TrainDataset(Dataset):
                 cam2_d = (read_depth(loader.get_cam2d(idx))[np.newaxis, :, :] - M_CAM2D) / S_CAM2D
                 # cam2_d = crop_img(crop_img, 352, 1216)
                 velo_d = (read_depth(loader.get_velod(idx))[np.newaxis, :, :] - M_VELOD) / S_VELOD
+                # print(f"-1111---Data {velo_d.shape}  {np.mean(velo_d)} {np.max(velo_d)} {np.min(velo_d)}")
 
                 # calc errors
                 gt_err = np.array(gt[idx][1:], dtype=np.float32)
@@ -157,6 +158,14 @@ class TrainDataset(Dataset):
                 # cam2 = np.array(loader.get_cam2d(idx), dtype=np.uint8)
                 T = loader.calib.T_cam2_velo.astype(np.float32)
 
+                if True:
+                # if self.mode == 'test':
+                    velo = loader.get_velo(idx)
+                    cam2 = np.array(loader.get_cam2(idx), dtype=np.uint8)
+                    T = loader.calib.T_cam2_velo.astype(np.float32)
+                    P = loader.calib.P_rect_20.astype(np.float32)
+                    # return cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo_batch, T, P
+                    return cam2_d, velo_d, gt_err, gt_err_norm, cam2, velo_batch, T, P
                 return cam2_d, velo_d, gt_err, gt_err_norm, velo_batch, T
         raise IndexError(f'Could not find data by index: {idx}')
 
@@ -192,6 +201,8 @@ class EvalDataset(Dataset):
 
     def set_mode(self, mode: Literal['train', 'val', 'test'] = 'train'):
         self.drives = [i.name.split('_')[4] for i in getattr(self, f'{mode}_root').joinpath(self.date).glob(f'{self.date}_drive_*_sync')]
+        # if mode=='test':
+        #     mode=='train'
         self.mode = mode
         self._init_data()
         return
@@ -215,7 +226,7 @@ class EvalDataset(Dataset):
         self.loaders = {}
         for drive in self.drives:
             loader = pykitti2.raw(getattr(self, f'{self.mode}_root').as_posix(), self.date, drive)
-            gt_file = getattr(self, f'{self.mode}_root').joinpath(self.date).joinpath(f'{self.date}_drive_{drive}_sync').joinpath('gt_F.txt').as_posix()
+            gt_file = getattr(self, f'{self.mode}_root').joinpath(self.date).joinpath(f'{self.date}_drive_{drive}_sync').joinpath('gt_PS.txt').as_posix()
             with open(gt_file, 'r') as f:
                 gt = [l.strip().split(',') for l in f]
             drive_len = loader.get_depth_len()
@@ -239,6 +250,7 @@ class EvalDataset(Dataset):
                 
 
                 velo_d = (read_depth(loader.get_velod(idx))[np.newaxis, :, :] - M_VELOD) / S_VELOD
+                # print(f"----Data {velo_d.shape}  {np.mean(velo_d)} {np.max(velo_d)} {np.min(velo_d)}")
 
                 # calc errors
                 gt_err = np.array(gt[idx][1:], dtype=np.float32)
@@ -246,7 +258,8 @@ class EvalDataset(Dataset):
                 gt_err_norm[:3] = (gt_err_norm[:3]-self.rot_mean)/self.rot_std
                 gt_err_norm[3:] = (gt_err_norm[3:]-self.trans_mean)/self.trans_std
 
-                if self.mode == 'test':
+                if True:
+                # if self.mode == 'test':
                     velo = loader.get_velo(idx)
                     cam2 = np.array(loader.get_cam2(idx), dtype=np.uint8)
                     T = loader.calib.T_cam2_velo.astype(np.float32)

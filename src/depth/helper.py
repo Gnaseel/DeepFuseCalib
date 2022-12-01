@@ -3,8 +3,10 @@ import os, time
 import shutil
 import torch
 import csv
-from depth import vis_utils
-from depth.metrics_d import Result
+import sys
+sys.path.append('/workspace/src/src/depth')
+import vis_utils
+from metrics_d import Result
 
 fieldnames = [
     'epoch', 'rmse', 'photo', 'mae', 'irmse', 'imae', 'mse', 'absrel', 'lg10',

@@ -1,4 +1,6 @@
-from depth.basic import *
+import sys
+sys.path.append('/workspace/src/src/depth')
+from basic import *
 
 class ENet(nn.Module):
     def __init__(self, args):

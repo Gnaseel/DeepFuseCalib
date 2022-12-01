@@ -9,8 +9,10 @@ from PIL import Image
 import torch
 import torch.utils.data as data
 import cv2
-from depth.dataloaders import transforms
-import depth.CoordConv
+import sys
+sys.path.append('/workspace/src/src/depth')
+from dataloaders import transforms
+import CoordConv
 
 input_options = ['d', 'rgb', 'rgbd', 'g', 'gd']
 
